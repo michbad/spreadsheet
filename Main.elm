@@ -38,9 +38,9 @@ initModel = {
   cols = A.initialize 10 (\c -> (A.initialize 10 (\r -> {col=c, row=r, val= toString (r, c)}))),
   active = (2,3),
   editing = False,
-  offset = (0, 0),
-  showWidth = 8,
-  showHeight = 10
+  offset = (2, 2),
+  showWidth = 5,
+  showHeight = 5
  }
 
 
@@ -85,7 +85,23 @@ update msg model =
 moveActive : Model -> (Int, Int) -> Model
 moveActive model (dx, dy) =
   let (x,y) = model.active
-  in  { model | active = (x+dx, y+dy) }
+      (offX, offY) = model.offset
+      (newX, newY) = (Basics.max (x+dx) 0, Basics.max (y+dy) 0)
+      newOffX =
+        if newX < offX then
+          newX
+        else if newX - model.showWidth >= offX then
+          newX - model.showWidth + 1
+        else
+          offX
+      newOffY =
+        if newY < offY then
+          newY
+        else if newY - model.showWidth >= offY then
+          newY - model.showWidth + 1
+        else
+          offY
+  in  { model | active = (newX, newY), offset = (newOffX, newOffY) }
 
 -- VIEW
 
