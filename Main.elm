@@ -25,17 +25,24 @@ type alias Cell = {val : String, col : Int, row : Int}
 
 init = (initModel, Cmd.none)
 
-initModel = {
-  cols = A.initialize 10 (\c -> (A.initialize 10 (\r -> {col=c, row=r, val= toString (r, c)}))),
-  active = (2,3),
-  editing = False
- }
-
 type alias Model = {
   cols: A.Array (A.Array Cell),
   active : (Int, Int),
-  editing : Bool
+  editing : Bool,
+  offset : (Int, Int),
+  showWidth : Int,
+  showHeight : Int
 }
+
+initModel = {
+  cols = A.initialize 10 (\c -> (A.initialize 10 (\r -> {col=c, row=r, val= toString (r, c)}))),
+  active = (2,3),
+  editing = False,
+  offset = (0, 0),
+  showWidth = 8,
+  showHeight = 10
+ }
+
 
 
 -- UPDATE
@@ -133,9 +140,12 @@ drawRow model row = tr [] <| List.map (drawCell model) row
 
 drawGrid : Model -> A.Array (A.Array Cell) -> Html Msg
 drawGrid model cols =
-  let rows = transpose <| gridToList <| cols in
+  let rows = transpose <| gridToList <| getGridSlice model.offset model.showHeight model.showWidth <| cols in
   table [] <| List.map (drawRow model) rows
 
+getGridSlice : (Int,Int) -> Int -> Int -> A.Array (A.Array Cell) -> A.Array (A.Array Cell)
+getGridSlice (h0, w0) h w cols =
+  A.slice w0 (w0+w) cols |> A.map (A.slice h0 (h0+h))
 
 view : Model -> Html Msg
 view model =
