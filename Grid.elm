@@ -41,11 +41,6 @@ extendGrid (targetH0, targetW0) fillByRowCol cols =
     curH = A.get 0 cols |> Maybe.map A.length |> Maybe.withDefault 0
     targetW = Basics.max targetW0 curW
     targetH = Basics.max targetH0 curH
-    -- longerCols =
-    --   if curH < targetH then
-    --     A.indexedMap (\i col -> extendCol i (targetH - curH) col) cols
-    --   else
-    --     cols
     longerCols = A.indexedMap (\c col ->
         ensureColLen c targetH (\r -> fillByRowCol (r, c)) col
       ) cols

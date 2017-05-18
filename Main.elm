@@ -35,12 +35,12 @@ type alias Model = {
 }
 
 initModel = {
-  cols = Grid.makeGrid 10 12 (\pos -> makeCell (posToStr pos) pos),
+  cols = Grid.makeGrid 25 25 (\pos -> makeCell (posToStr pos) pos),
   active = (2,3),
   editing = False,
   offset = (2, 2),
-  showWidth = 5,
-  showHeight = 5,
+  showWidth = 10,
+  showHeight = 10,
   currentEdit = ""
  }
 
@@ -151,13 +151,23 @@ drawCell model cell =
               style inactiveCellStyle, id (posToStr pos) ] []
     ]
 
-drawRow : Model -> List Cell -> Html Msg
-drawRow model row = tr [] <| List.map (drawCell model) row
+drawRow : Model -> Int -> List Cell -> Html Msg
+drawRow model rowIdx row =
+  let
+    header = td [width 100, height 50] [text <| toString rowIdx]
+    entries = List.map (drawCell model) row
+  in
+    tr [] (header :: entries)
 
 drawGrid : Model -> Grid Cell -> Html Msg
 drawGrid model cols =
-  let rows = transpose <| gridToList <| getGridSlice model.offset model.showHeight model.showWidth <| cols in
-  table [] <| List.map (drawRow model) rows
+  let
+    rows = transpose <| gridToList <| getGridSlice model.offset model.showHeight model.showWidth <| cols
+    (rowOffset, colOffset) = model.offset
+    header = tr [] <| (td [] []) :: (List.map (\i -> td [] [text <| toString i]) (List.range colOffset <| colOffset + model.showWidth - 1))
+    rowEntries = List.indexedMap (\i row -> drawRow model (i + rowOffset) row) rows
+  in
+    table [] <| header :: rowEntries
 
 
 
