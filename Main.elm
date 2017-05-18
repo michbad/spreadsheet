@@ -6,9 +6,7 @@ import Html.Events exposing (onInput)
 import Keyboard
 import Task
 import Dom
-
--- import Array as A
-import Array.Hamt as A
+import Grid exposing (..)
 
 main : Program Never Model Msg
 main =
@@ -23,12 +21,11 @@ main =
 -- MODEL
 
 type alias Cell = {val : String, col : Int, row : Int}
-type alias Grid = A.Array (A.Array Cell)
 
 init = (initModel, Cmd.none)
 
 type alias Model = {
-  cols: A.Array (A.Array Cell),
+  cols: Grid Cell,
   active : (Int, Int),
   editing : Bool,
   offset : (Int, Int),
@@ -38,7 +35,7 @@ type alias Model = {
 }
 
 initModel = {
-  cols = A.initialize 12 (\c -> (A.initialize 10 (\r -> {col=c, row=r, val= toString (r, c)}))),
+  cols = Grid.makeGrid 10 12 (\r c -> makeCell (posToStr (r,c)) (r, c)),
   active = (2,3),
   editing = False,
   offset = (2, 2),
@@ -76,7 +73,8 @@ update msg model =
         27 -> ({ model | editing = False }, Cmd.none)
         13 ->
           let
-            newCols = updateCell model.cols model.active model.currentEdit
+            newCell = makeCell model.currentEdit model.active
+            newCols = updateElem model.active newCell model.cols
           in
             ({ model | editing = False, currentEdit = "", cols=newCols }, Cmd.none)
         _  -> (model, Cmd.none)
@@ -108,7 +106,7 @@ moveActive model (dx, dy) =
           newY - model.showWidth + 1
         else
           offY
-      newCols = extendGrid (newOffX + model.showHeight + 1, newOffY + model.showWidth + 1) model.cols
+      newCols = extendGrid (newOffX + model.showHeight + 1, newOffY + model.showWidth + 1) (makeCell "") model.cols
   in  { model | active = (newX, newY), offset = (newOffX, newOffY), cols = newCols }
 
 -- VIEW
@@ -123,28 +121,11 @@ inactiveCellStyle = [
   ("background-color", "light gray")
     ]
 
-transpose : List (List Cell) -> List (List Cell)
-transpose ls =
-  let
-    first = List.filterMap (List.head) ls
-    rest = List.filterMap (List.tail) ls
-  in
-    case List.head rest |> Maybe.andThen (List.head) of
-      Nothing -> [first]
-      Just _ -> first :: transpose rest
 
-gridToList : A.Array (A.Array Cell) -> List (List Cell)
-gridToList cols = A.toList <| A.map (A.toList) cols
 
 emptyCell row col = {row=row, col=col, val=""}
 
-updateCell : Grid -> (Int, Int) -> String -> Grid
-updateCell cols (r, c) val =
-  let
-    col = A.get c cols |> Maybe.withDefault A.empty
-    newCol = A.set r {row=r, col=c, val=val} col
-  in
-    A.set c newCol cols
+makeCell val (row, col) = {row=row, col=col, val=val}
 
 
 drawCell : Model -> Cell -> Html Msg
@@ -173,48 +154,17 @@ drawCell model cell =
 drawRow : Model -> List Cell -> Html Msg
 drawRow model row = tr [] <| List.map (drawCell model) row
 
-drawGrid : Model -> A.Array (A.Array Cell) -> Html Msg
+drawGrid : Model -> Grid Cell -> Html Msg
 drawGrid model cols =
   let rows = transpose <| gridToList <| getGridSlice model.offset model.showHeight model.showWidth <| cols in
   table [] <| List.map (drawRow model) rows
 
-getGridSlice : (Int,Int) -> Int -> Int -> A.Array (A.Array Cell) -> A.Array (A.Array Cell)
-getGridSlice (h0, w0) h w cols =
-  A.slice w0 (w0+w) cols |> A.map (A.slice h0 (h0+h))
-
-extendGrid : (Int, Int) -> Grid -> Grid
-extendGrid (targetH0, targetW0) cols =
-  let
-    curW = A.length cols
-    curH = A.get 0 cols |> Maybe.map A.length |> Maybe.withDefault 0
-    targetW = Basics.max targetW0 curW
-    targetH = Basics.max targetH0 curH
-    -- longerCols =
-    --   if curH < targetH then
-    --     A.indexedMap (\i col -> extendCol i (targetH - curH) col) cols
-    --   else
-    --     cols
-    longerCols = A.indexedMap (\i col -> ensureColLen i targetH col) cols
-    moreCols =
-      if curW < targetW then
-        A.initialize (targetW - curW) (\i -> ensureColLen (curW+i) targetH A.empty)
-      else
-        A.empty
-  in
-    A.append cols moreCols
 
 
-ensureColLen : Int -> Int -> A.Array Cell -> A.Array Cell
-ensureColLen colIdx targetLen col =
-  let _ = Debug.log "colIdx, targetLen" (colIdx, targetLen) in
-  if A.length col >= targetLen then
-    col
-  else let
-    rowOffset = A.length col
-    toAppend = A.initialize (targetLen - A.length col) (\r -> emptyCell (r+rowOffset) colIdx)
-  in
-    let _ = Debug.log "after append" (A.length <| A.append col toAppend) in
-    A.append col toAppend
+
+
+
+
 
 view : Model -> Html Msg
 view model =
