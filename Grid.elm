@@ -1,12 +1,12 @@
 module Grid exposing (..)
-import Array as A
--- import Array.Hamt as A
+-- import Array as A
+import Array.Hamt as A
 
 type alias Grid a = A.Array (A.Array a)
 
-makeGrid : Int -> Int -> (Int -> Int -> a) -> Grid a
+makeGrid : Int -> Int -> ((Int, Int) -> a) -> Grid a
 makeGrid nRows nCols fillRowCol =
-  A.initialize nCols (\c -> (A.initialize nRows (\r -> fillRowCol r c)))
+  A.initialize nCols (\c -> (A.initialize nRows (\r -> fillRowCol (r,c))))
 
 transpose : List (List a) -> List (List a)
 transpose ls =
@@ -46,14 +46,16 @@ extendGrid (targetH0, targetW0) fillByRowCol cols =
     --     A.indexedMap (\i col -> extendCol i (targetH - curH) col) cols
     --   else
     --     cols
-    longerCols = A.indexedMap (\c col -> ensureColLen c targetH (\r -> fillByRowCol (r, c)) col) cols
+    longerCols = A.indexedMap (\c col ->
+        ensureColLen c targetH (\r -> fillByRowCol (r, c)) col
+      ) cols
     moreCols =
       if curW < targetW then
         A.initialize (targetW - curW) (\c -> ensureColLen (curW+c) targetH (\r -> fillByRowCol (r, curW+c)) A.empty)
       else
         A.empty
   in
-    A.append cols moreCols
+    A.append longerCols moreCols
 
 ensureColLen : Int -> Int -> (Int -> a) -> A.Array a -> A.Array a
 ensureColLen colIdx targetLen fillFunc col =
@@ -62,7 +64,7 @@ ensureColLen colIdx targetLen fillFunc col =
     col
   else let
     rowOffset = A.length col
-    toAppend = A.initialize (targetLen - A.length col) fillFunc
+    toAppend = A.initialize (targetLen - A.length col) (\r -> fillFunc (r + rowOffset))
     -- (\r -> emptyCell (r+rowOffset) colIdx)
   in
     let _ = Debug.log "after append" (A.length <| A.append col toAppend) in

@@ -35,7 +35,7 @@ type alias Model = {
 }
 
 initModel = {
-  cols = Grid.makeGrid 10 12 (\r c -> makeCell (posToStr (r,c)) (r, c)),
+  cols = Grid.makeGrid 10 12 (\pos -> makeCell (posToStr pos) pos),
   active = (2,3),
   editing = False,
   offset = (2, 2),
@@ -106,7 +106,7 @@ moveActive model (dx, dy) =
           newY - model.showWidth + 1
         else
           offY
-      newCols = extendGrid (newOffX + model.showHeight + 1, newOffY + model.showWidth + 1) (makeCell "") model.cols
+      newCols = extendGrid (newOffX + model.showHeight + 1, newOffY + model.showWidth + 1) (\pos -> makeCell (posToStr pos) pos) model.cols
   in  { model | active = (newX, newY), offset = (newOffX, newOffY), cols = newCols }
 
 -- VIEW
