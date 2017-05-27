@@ -26,6 +26,10 @@ updateElem (r, c) val cols =
   in
     A.set c newCol cols
 
+getElem : (Int, Int) -> Grid a -> Maybe a
+getElem (r, c) cols =
+  A.get c cols |> Maybe.andThen (A.get r)
+
 
 gridToList : A.Array (A.Array a) -> List (List a)
 gridToList cols = A.toList <| A.map (A.toList) cols

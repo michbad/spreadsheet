@@ -7,6 +7,7 @@ import Keyboard
 import Task
 import Dom
 import Grid exposing (..)
+import Cell exposing (..)
 
 main : Program Never Model Msg
 main =
@@ -20,7 +21,7 @@ main =
 
 -- MODEL
 
-type alias Cell = {val : String, col : Int, row : Int}
+-- type alias Cell = {val : String, col : Int, row : Int}
 
 init = (initModel, Cmd.none)
 
