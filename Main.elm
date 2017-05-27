@@ -113,8 +113,8 @@ moveActive model (dx, dy) =
 
 activeCellStyle : List (String, String)
 activeCellStyle = [
-  ("background-color", "pink"),
-  ("font-size", "14px")
+  ("background-color", "light gray"),
+  ("font-size", "15px")
   ]
 
 inactiveCellStyle = [

@@ -15,8 +15,16 @@ type CellExpr =
   | Sub CellExpr CellExpr
   | Mult CellExpr CellExpr
   | Div CellExpr CellExpr
-  | Power CellExpr CellExpr
+  | FunApp String ExprList
 
+type alias ExprList = List ExprListItem
+type ExprListItem = Single CellExpr | CellRange (Int, Int) (Int, Int)
+
+-- type FunApp = FunApp String ExprList
+
+spaced parser = whitespace *> parser <* whitespace
+
+spacedstring s = whitespace *> string s <* whitespace
 
 addop : Parser s (CellExpr -> CellExpr -> CellExpr)
 addop = choice [ Add <$ string "+"
@@ -24,7 +32,7 @@ addop = choice [ Add <$ string "+"
                ]
 
 mulop : Parser s (CellExpr -> CellExpr -> CellExpr)
-mulop = choice [ Mult  <$ string "*"
+mulop = choice [ Mult <$ string "*"
                , Div <$ string "/"
                ]
 
@@ -46,21 +54,32 @@ term =
 
 factor : Parser s CellExpr
 factor =
-  whitespace *> (parens expr <|> num <|> cellref) <* whitespace
+  whitespace *> (lazy (\_ ->parens expr) <|> num <|> cellref <|> lazy (\_ ->funapp)) <* whitespace
 
 num = map Num (float <|> map toFloat int)
 
 cellref =
   CellRef
-    <$> (string "#" *> int <* string ",")
-    <*> int
+    <$> (string "[" *> int <* string ",")
+    <*> (int <* string "]")
 
-{-| Compute the result of an expression. -}
-calc : String -> Result String CellExpr
-calc s =
+cellrange =
+  CellRange
+    <$> ( (,) <$> (spacedstring "[" *> int <* spacedstring ":") <*> int )
+    <*> ( (,) <$> (spacedstring "," *> int <* spacedstring ":") <*> int <* spacedstring "]" )
+
+exprlistitem = cellrange <|> (Single <$> lazy (\_ -> expr))
+
+exprlist = sepBy (spacedstring ",") (lazy (\_ -> exprlistitem))
+
+funapp = FunApp <$> regex "[a-zA-Z]+" <*> parens (lazy (\_ -> exprlist))
+
+parseExpr : String -> Result String CellExpr
+parseExpr s =
   case parse (expr <* end) s of
     Ok (_, _, n) ->
       Ok n
 
     Err (_, stream, ms) ->
       Err ("parse error: " ++ (toString ms) ++ ", " ++ (toString stream))
+
