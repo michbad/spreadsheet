@@ -6,8 +6,11 @@ import Html.Events exposing (onInput)
 import Keyboard
 import Task
 import Dom
+
 import Grid exposing (..)
-import Cell exposing (..)
+-- import Cell exposing (..)
+import CellEval exposing (..)
+import CellParse exposing (..)
 
 main : Program Never Model Msg
 main =
@@ -36,7 +39,7 @@ type alias Model = {
 }
 
 initModel = {
-  cols = Grid.makeGrid 25 25 (\pos -> makeCell (posToStr pos) pos),
+  cols = Grid.makeGrid 25 25 (\pos -> emptyCell pos),
   active = (2,3),
   editing = False,
   offset = (2, 2),
@@ -74,7 +77,7 @@ update msg model =
         27 -> ({ model | editing = False }, Cmd.none)
         13 ->
           let
-            newCell = makeCell model.currentEdit model.active
+            newCell = makeCell model.currentEdit model.active model.cols
             newCols = updateElem model.active newCell model.cols
           in
             ({ model | editing = False, currentEdit = "", cols=newCols }, Cmd.none)
@@ -107,7 +110,7 @@ moveActive model (dx, dy) =
           newY - model.showWidth + 1
         else
           offY
-      newCols = extendGrid (newOffX + model.showHeight + 1, newOffY + model.showWidth + 1) (\pos -> makeCell (posToStr pos) pos) model.cols
+      newCols = extendGrid (newOffX + model.showHeight + 1, newOffY + model.showWidth + 1) (\pos -> emptyCell pos) model.cols
   in  { model | active = (newX, newY), offset = (newOffX, newOffY), cols = newCols }
 
 -- VIEW
@@ -124,9 +127,22 @@ inactiveCellStyle = [
 
 
 
-emptyCell row col = {row=row, col=col, val=""}
+emptyCell (row, col) = {row=row, col=col, val=Ok 0, text="", expr=emptyExpr}
 
-makeCell val (row, col) = {row=row, col=col, val=val}
+makeCell text (row, col) cols =
+  let
+    expr = parseExpr text
+    exprDefault = Result.withDefault (emptyExpr) expr
+    val = evalParsed expr (row, col) cols
+  in
+    {row=row, col=col, text=text, val=val, expr=exprDefault}
+
+viewCell : Cell -> String
+viewCell cell =
+  if String.isEmpty cell.text then
+    ""
+  else
+    CellEval.valToString cell.val
 
 
 drawCell : Model -> Cell -> Html Msg
@@ -138,17 +154,17 @@ drawCell model cell =
   if isActive then
     if model.editing then
       td [width 100, height 50] [
-        input [ defaultValue cell.val, onInput (always Noop), size 5, width 5, readonly False,
+        input [ placeholder cell.text, onInput (always Noop), size 5, width 5, readonly False,
                 style activeCellStyle, id (posToStr pos), onInput Edit] []
       ]
     else
       td [width 100, height 50] [
-        input [ value cell.val, onInput (always Noop), size 5, width 5, readonly True,
+        input [ value (viewCell cell), onInput (always Noop), size 5, width 5, readonly True,
                 style activeCellStyle, id (posToStr pos)] []
       ]
   else
     td [width 100, height 50] [
-      input [ value cell.val, onInput (always Noop), size 5, width 5, readonly True,
+      input [ value (viewCell cell), onInput (always Noop), size 5, width 5, readonly True,
               style inactiveCellStyle, id (posToStr pos) ] []
     ]
 

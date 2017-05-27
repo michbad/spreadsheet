@@ -54,7 +54,10 @@ term =
 
 factor : Parser s CellExpr
 factor =
-  whitespace *> (lazy (\_ ->parens expr) <|> num <|> cellref <|> lazy (\_ ->funapp)) <* whitespace
+  spaced (
+    lazy (\_ ->parens expr) <|> num <|> cellref <|> lazy (\_ ->funapp) <|>
+     empty <|> rowno <|> colno
+    )
 
 num = map Num (float <|> map toFloat int)
 
@@ -68,11 +71,17 @@ cellrange =
     <$> ( (,) <$> (spacedstring "[" *> int <* spacedstring ":") <*> int )
     <*> ( (,) <$> (spacedstring "," *> int <* spacedstring ":") <*> int <* spacedstring "]" )
 
+rowno = string "#r" *> succeed RowNo
+
+colno = string "#c" *> succeed ColNo
+
 exprlistitem = cellrange <|> (Single <$> lazy (\_ -> expr))
 
 exprlist = sepBy (spacedstring ",") (lazy (\_ -> exprlistitem))
 
 funapp = FunApp <$> regex "[a-zA-Z]+" <*> parens (lazy (\_ -> exprlist))
+
+empty = end *> succeed emptyExpr
 
 parseExpr : String -> Result String CellExpr
 parseExpr s =
@@ -81,5 +90,7 @@ parseExpr s =
       Ok n
 
     Err (_, stream, ms) ->
-      Err ("parse error: " ++ (toString ms) ++ ", " ++ (toString stream))
+      Err "parse error"
+
+emptyExpr = Num 0
 

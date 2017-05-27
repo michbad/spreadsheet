@@ -2,10 +2,11 @@ module CellEval exposing (..)
 
 import CellParse exposing (CellExpr(..), ExprListItem(..), ExprList)
 import Grid exposing (getElem, Grid)
-import Cell exposing (..)
+-- import Cell exposing (..)
 
 import Result exposing (..)
 
+type alias Cell = {val : CellVal, text : String, expr : CellExpr, col : Int, row : Int}
 type alias CellVal = Result String Float
 
 eval : CellExpr -> (Int, Int) -> Grid Cell -> CellVal
@@ -30,3 +31,10 @@ eval expr (row, col) grid =
 --
 -- getCellVal (r, c) grid =
 --   Ok 0
+
+valToString : CellVal -> String
+valToString val = case val of
+  Err txt -> "Error: " ++ txt
+  Ok num -> toString num
+
+evalParsed expr pos grid = andThen (\e -> eval e pos grid) expr
