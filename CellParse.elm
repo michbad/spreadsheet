@@ -63,8 +63,8 @@ num = map Num (float <|> map toFloat int)
 
 cellref =
   CellRef
-    <$> (string "[" *> int <* string ",")
-    <*> (int <* string "]")
+    <$> (spacedstring "[" *> int <* spacedstring ",")
+    <*> (int <* spacedstring "]")
 
 cellrange =
   CellRange

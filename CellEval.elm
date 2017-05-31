@@ -6,20 +6,22 @@ import Lazy exposing (lazy, force, Lazy)
 
 import Result exposing (..)
 
-type alias Cell = {val : CellVal, text : String, expr : CellExpr, col : Int, row : Int}
-type alias CellVal = Lazy (Result String Float)
+type Cell = Cell {val : AlmostVal, text : String, expr : CellExpr, col : Int, row : Int}
+type alias CellVal = Result String Float
 
-eval : CellExpr -> (Int, Int) -> Grid Cell -> CellVal
-eval expr (row, col) grid =
-  lazy <| \_ ->
+type alias AlmostVal = Lazy (Grid Cell -> CellVal)
+
+eval : CellExpr -> (Int, Int) -> AlmostVal
+eval expr (row, col) =
+  lazy <| \_ -> \grid ->
     case expr of
       Num n           -> Ok n
       RowNo           -> Ok (toFloat row)
       ColNo           -> Ok (toFloat col)
-      Add e1 e2       -> map2 (+) (force <| eval e1 (row, col) grid) (force <| eval e2 (row, col) grid)
-      Sub e1 e2       -> map2 (-) (force <| eval e1 (row, col) grid) (force <| eval e2 (row, col) grid)
-      Mult e1 e2      -> map2 (*) (force <| eval e1 (row, col) grid) (force <| eval e2 (row, col) grid)
-      Div e1 e2       -> map2 (/) (force <| eval e1 (row, col) grid) (force <| eval e2 (row, col) grid)
+      Add e1 e2       -> map2 (+) ((force <| eval e1 (row, col)) grid) ((force <| eval e2 (row, col)) grid)
+      Sub e1 e2       -> map2 (-) ((force <| eval e1 (row, col)) grid) ((force <| eval e2 (row, col)) grid)
+      Mult e1 e2      -> map2 (*) ((force <| eval e1 (row, col)) grid) ((force <| eval e2 (row, col)) grid)
+      Div e1 e2       -> map2 (/) ((force <| eval e1 (row, col)) grid) ((force <| eval e2 (row, col)) grid)
       FunApp fname es -> Debug.crash "TODO"
       --applyFun fname (es |> map eval) grid
       CellRef r_ c_  ->
@@ -28,12 +30,12 @@ eval expr (row, col) grid =
         else
           let
             refCell = getElem (r_, c_) grid
-            cellVal = Maybe.map (\cell -> force cell.val) refCell
+            cellVal = Maybe.map (\(Cell cell) -> (force cell.val) grid) refCell
           in
             case cellVal of
               -- Nothing returned means out of bounds access
               -- which means the cell must be empty
-              Nothing -> force emptyVal
+              Nothing -> (force emptyVal) grid
               Just val -> val
       -- CellRef r_ c_   -> getCellVal (r_, c_) grid
 
@@ -45,12 +47,15 @@ eval expr (row, col) grid =
 -- getCellVal (r, c) grid =
 --   Ok 0
 
-valToString : CellVal -> String
-valToString val = case force val of
+valToString : AlmostVal -> Grid Cell -> String
+valToString val grid = case (force val) grid of
   Err txt -> "Error: " ++ txt
   Ok num -> toString num
 
-evalParsed expr pos grid = lazy <| \_ ->
-  expr |> andThen (\e -> force <| eval e pos grid)
+evalParsed : Result String CellExpr -> (Int, Int) -> AlmostVal
+evalParsed parsed pos =
+  case parsed of
+    Err msg -> lazy <| \_ -> always (Err msg)
+    Ok tree -> eval tree pos
 
-emptyVal = lazy <| \_ -> Ok 0
+emptyVal = lazy <| \_ -> always (Ok 0)

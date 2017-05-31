@@ -133,44 +133,46 @@ inactiveCellStyle = [
 
 
 
-emptyCell (row, col) = {row=row, col=col, val=emptyVal, text="", expr=emptyExpr}
+emptyCell (row, col) =
+  Cell {row=row, col=col, val=emptyVal, text="", expr=emptyExpr}
 
 makeCell text (row, col) cols =
   let
     expr = parseExpr text
     exprDefault = Result.withDefault (emptyExpr) expr
-    val = evalParsed expr (row, col) cols
+    val = evalParsed expr (row, col)
   in
-    {row=row, col=col, text=text, val=val, expr=exprDefault}
+    Cell {row=row, col=col, text=text, val=val, expr=exprDefault}
 
-viewCell : Cell -> String
-viewCell cell =
+viewCell : Cell -> Grid Cell -> String
+viewCell (Cell cell) grid =
   if String.isEmpty cell.text then
     ""
   else
-    CellEval.valToString cell.val
+    CellEval.valToString cell.val grid
 
 
 drawCell : Model -> Cell -> Html Msg
-drawCell model cell =
+drawCell model (Cell cellBody as cell) =
   let
-    pos = (cell.row, cell.col)
+    pos = (cellBody.row, cellBody.col)
     isActive = model.active == pos
+    grid = model.cols
   in
   if isActive then
     if model.editing then
       td [width 100, height 50, style activeCellStyle] [
-        input [ placeholder cell.text, onInput (always Noop), size 5, width 5, readonly False,
+        input [ placeholder cellBody.text, onInput (always Noop), size 5, width 5, readonly False,
                 id (posToStr pos), onInput Edit] []
       ]
     else
       td [width 100, height 50, style activeCellStyle] [
-        input [ value (viewCell cell), onInput (always Noop), size 5, width 5, readonly True,
+        input [ value (viewCell cell grid), onInput (always Noop), size 5, width 5, readonly True,
                 id (posToStr pos)] []
       ]
   else
     td [width 100, height 50, style inactiveCellStyle] [
-      input [ value (viewCell cell), onInput (always Noop), size 5, width 5, readonly True,
+      input [ value (viewCell cell grid), onInput (always Noop), size 5, width 5, readonly True,
                id (posToStr pos) ] []
     ]
 
