@@ -20,8 +20,6 @@ type CellExpr =
 type alias ExprList = List ExprListItem
 type ExprListItem = Single CellExpr | CellRange (Int, Int) (Int, Int)
 
--- type FunApp = FunApp String ExprList
-
 spaced parser = whitespace *> parser <* whitespace
 
 spacedstring s = whitespace *> string s <* whitespace

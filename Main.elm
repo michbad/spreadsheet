@@ -6,9 +6,9 @@ import Html.Events exposing (onInput)
 import Keyboard
 import Task
 import Dom
+import Window
 
 import Grid exposing (..)
--- import Cell exposing (..)
 import CellEval exposing (..)
 import CellParse exposing (parseExpr, emptyExpr)
 
@@ -26,7 +26,7 @@ main =
 
 -- type alias Cell = {val : String, col : Int, row : Int}
 
-init = (initModel, Cmd.none)
+init = (initModel, getSize)
 
 type alias Model = {
   cols: Grid Cell,
@@ -35,7 +35,9 @@ type alias Model = {
   offset : (Int, Int),
   showWidth : Int,
   showHeight : Int,
-  currentEdit : String
+  currentEdit : String,
+  cellWidth : Int,
+  cellHeight : Int
 }
 
 initModel = {
@@ -45,21 +47,22 @@ initModel = {
   offset = (0, 0),
   showWidth = 10,
   showHeight = 10,
-  currentEdit = ""
+  currentEdit = "",
+  cellWidth = 100,
+  cellHeight = 50
  }
 
-
-
 -- UPDATE
+
+type Msg = Noop | KeyMsg Keyboard.KeyCode | Edit String | NewSize Window.Size
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
         [
-          Keyboard.presses KeyMsg
+          Keyboard.presses KeyMsg,
+          Window.resizes NewSize
         ]
-
-type Msg = Noop | KeyMsg Keyboard.KeyCode | Edit String
 
 posToStr : (Int, Int) -> String
 posToStr (r,c) = toString r ++ "," ++ toString c
@@ -67,11 +70,13 @@ posToStr (r,c) = toString r ++ "," ++ toString c
 focusOnCell pos = Task.attempt (always Noop) (Dom.focus (posToStr pos))
 blurCell pos = Task.attempt (always Noop) (Dom.blur (posToStr pos))
 
+getSize = Task.perform NewSize Window.size
+
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
     Noop -> (model, Cmd.none)
-    -- KeyMsg code -> Debug.crash (toString code)
+    NewSize sz -> (resizeModel sz model, Cmd.none)
     Edit str -> ({ model | currentEdit = str}, Cmd.none)
     KeyMsg code ->
       if model.editing then case code of
@@ -81,7 +86,7 @@ update msg model =
             newCell = makeCell model.currentEdit model.active model.cols
             newCols = updateElem model.active newCell model.cols
           in
-            ({ model | editing = False, currentEdit = "", cols=newCols }, blurCell model.active)
+            ({ model | editing = False, currentEdit = "", cols=newCols },blurCell model.active)
         _  -> (model, Cmd.none)
       else
         case code of
@@ -111,8 +116,10 @@ moveActive model (dx, dy) =
           newY - model.showWidth + 1
         else
           offY
-      newCols = extendGrid (newOffX + model.showHeight + 1, newOffY + model.showWidth + 1) (\pos -> emptyCell pos) model.cols
-  in  { model | active = (newX, newY), offset = (newOffX, newOffY), cols = newCols }
+      newCols = extendGrid
+                (newOffX + model.showHeight + 1, newOffY + model.showWidth + 1)
+                (\pos -> emptyCell pos) model.cols
+  in { model | active = (newX, newY), offset = (newOffX, newOffY), cols = newCols }
 
 emptyCell (row, col) =
   Cell {row=row, col=col, val=emptyVal, text="", expr=emptyExpr}
@@ -127,10 +134,16 @@ makeCell text (row, col) cols =
 
 -- VIEW
 
+resizeModel sz model =
+  let
+    newShowWidth =  (round <| 0.9 * toFloat sz.width) // model.cellWidth
+    newShowHeight = (round <| 0.9 * toFloat sz.height) // model.cellHeight
+  in
+   { model | showWidth = newShowWidth, showHeight = newShowHeight}
+
 activeCellStyle : List (String, String)
 activeCellStyle = [
   ("background-color", "white"),
-  -- ("font-size", "15px"),
   ("border", "1px solid black"),
   ("text-align", "center"),
   ("padding", "0px")
@@ -142,6 +155,13 @@ inactiveCellStyle = [
   ("padding", "0px")
     ]
 
+textboxStyle = [
+  ("background-color", "white"),
+  ("border", "0px solid"),
+  ("text-align", "center"),
+  ("font-size", "15px"),
+  ("font-family", "sans-serif")
+  ]
 
 viewCell : Cell -> Grid Cell -> String
 viewCell (Cell cell) grid =
@@ -160,25 +180,27 @@ drawCell model (Cell cellBody as cell) =
   in
   if isActive then
     if model.editing then
-      td [width 100, height 50, style activeCellStyle] [
+      td [width model.cellWidth, height model.cellHeight, style activeCellStyle]
+      [
         input [ placeholder cellBody.text, onInput (always Noop), size 5, width 5, readonly False,
-                id (posToStr pos), onInput Edit] []
+                id (posToStr pos), onInput Edit, style textboxStyle ] []
       ]
     else
-      td [width 100, height 50, style activeCellStyle] [
+      td [width model.cellWidth, height model.cellHeight, style activeCellStyle] [
         input [ value (viewCell cell grid), onInput (always Noop), size 5, width 5, readonly True,
-                id (posToStr pos)] []
+                id (posToStr pos), style textboxStyle] []
       ]
   else
-    td [width 100, height 50, style inactiveCellStyle] [
+    td [width model.cellWidth, height model.cellHeight, style inactiveCellStyle] [
       input [ value (viewCell cell grid), onInput (always Noop), size 5, width 5, readonly True,
-               id (posToStr pos) ] []
+               id (posToStr pos), style textboxStyle ] []
     ]
 
 drawRow : Model -> Int -> List Cell -> Html Msg
 drawRow model rowIdx row =
   let
-    header = td [width 50, height 50, style [("text-align", "center")]] [text <| toString rowIdx]
+    header = td [width (model.cellWidth // 2), height model.cellHeight, style [("text-align", "center")]]
+                [text <| toString rowIdx]
     entries = List.map (drawCell model) row
   in
     tr [] (header :: entries)
@@ -188,11 +210,15 @@ drawGrid model cols =
   let
     rows = transpose <| gridToList <| getGridSlice model.offset model.showHeight model.showWidth <| cols
     (rowOffset, colOffset) = model.offset
-    header = tr [] <| (td [] []) :: (List.map (\i -> td [style [("text-align", "center")]] [text <| toString i]) (List.range colOffset <| colOffset + model.showWidth - 1))
+    header = tr [] <|
+      (td [] []) :: (
+        List.map
+        (\i -> td [style [("text-align", "center")]] [text <| toString i])
+        (List.range colOffset <| colOffset + model.showWidth - 1)
+      )
     rowEntries = List.indexedMap (\i row -> drawRow model (i + rowOffset) row) rows
   in
     table [] <| header :: rowEntries
-
 
 view : Model -> Html Msg
 view model =
