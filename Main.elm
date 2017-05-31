@@ -40,9 +40,9 @@ type alias Model = {
 
 initModel = {
   cols = Grid.makeGrid 25 25 (\pos -> emptyCell pos),
-  active = (2,3),
+  active = (0, 0),
   editing = False,
-  offset = (2, 2),
+  offset = (0, 0),
   showWidth = 10,
   showHeight = 10,
   currentEdit = ""
@@ -65,6 +65,7 @@ posToStr : (Int, Int) -> String
 posToStr (r,c) = toString r ++ "," ++ toString c
 
 focusOnCell pos = Task.attempt (always Noop) (Dom.focus (posToStr pos))
+blurCell pos = Task.attempt (always Noop) (Dom.blur (posToStr pos))
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
@@ -74,13 +75,13 @@ update msg model =
     Edit str -> ({ model | currentEdit = str}, Cmd.none)
     KeyMsg code ->
       if model.editing then case code of
-        27 -> ({ model | editing = False }, Cmd.none)
+        27 -> ({ model | editing = False }, blurCell model.active)
         13 ->
           let
             newCell = makeCell model.currentEdit model.active model.cols
             newCols = updateElem model.active newCell model.cols
           in
-            ({ model | editing = False, currentEdit = "", cols=newCols }, Cmd.none)
+            ({ model | editing = False, currentEdit = "", cols=newCols }, blurCell model.active)
         _  -> (model, Cmd.none)
       else
         case code of
@@ -118,16 +119,21 @@ moveActive model (dx, dy) =
 activeCellStyle : List (String, String)
 activeCellStyle = [
   ("background-color", "light gray"),
-  ("font-size", "15px")
+  -- ("font-size", "15px"),
+  ("border", "1px solid black"),
+  ("text-align", "center"),
+  ("padding", "0px")
   ]
 
 inactiveCellStyle = [
-  ("background-color", "light gray")
+  ("background-color", "light gray"),
+  ("text-align", "center"),
+  ("padding", "0px")
     ]
 
 
 
-emptyCell (row, col) = {row=row, col=col, val=Ok 0, text="", expr=emptyExpr}
+emptyCell (row, col) = {row=row, col=col, val=emptyVal, text="", expr=emptyExpr}
 
 makeCell text (row, col) cols =
   let
@@ -153,25 +159,25 @@ drawCell model cell =
   in
   if isActive then
     if model.editing then
-      td [width 100, height 50] [
+      td [width 100, height 50, style activeCellStyle] [
         input [ placeholder cell.text, onInput (always Noop), size 5, width 5, readonly False,
-                style activeCellStyle, id (posToStr pos), onInput Edit] []
+                id (posToStr pos), onInput Edit] []
       ]
     else
-      td [width 100, height 50] [
+      td [width 100, height 50, style activeCellStyle] [
         input [ value (viewCell cell), onInput (always Noop), size 5, width 5, readonly True,
-                style activeCellStyle, id (posToStr pos)] []
+                id (posToStr pos)] []
       ]
   else
-    td [width 100, height 50] [
+    td [width 100, height 50, style inactiveCellStyle] [
       input [ value (viewCell cell), onInput (always Noop), size 5, width 5, readonly True,
-              style inactiveCellStyle, id (posToStr pos) ] []
+               id (posToStr pos) ] []
     ]
 
 drawRow : Model -> Int -> List Cell -> Html Msg
 drawRow model rowIdx row =
   let
-    header = td [width 100, height 50] [text <| toString rowIdx]
+    header = td [width 50, height 50, style [("text-align", "center")]] [text <| toString rowIdx]
     entries = List.map (drawCell model) row
   in
     tr [] (header :: entries)
@@ -181,7 +187,7 @@ drawGrid model cols =
   let
     rows = transpose <| gridToList <| getGridSlice model.offset model.showHeight model.showWidth <| cols
     (rowOffset, colOffset) = model.offset
-    header = tr [] <| (td [] []) :: (List.map (\i -> td [] [text <| toString i]) (List.range colOffset <| colOffset + model.showWidth - 1))
+    header = tr [] <| (td [] []) :: (List.map (\i -> td [style [("text-align", "center")]] [text <| toString i]) (List.range colOffset <| colOffset + model.showWidth - 1))
     rowEntries = List.indexedMap (\i row -> drawRow model (i + rowOffset) row) rows
   in
     table [] <| header :: rowEntries
@@ -195,7 +201,6 @@ drawGrid model cols =
 
 view : Model -> Html Msg
 view model =
-  -- text "lol"
   div [] <| [drawGrid model model.cols]
 
 
