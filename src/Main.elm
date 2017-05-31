@@ -88,7 +88,13 @@ update msg model =
         _  -> (model, Cmd.none)
       else
         case code of
-          13 -> ({ model | editing = True }, focusOnCell model.active)
+          13 ->
+            let
+              curCell = getElem model.active model.cols
+              text = Maybe.map getText curCell
+              textVal = Maybe.withDefault "" text
+            in
+              ({ model | editing = True, currentEdit = textVal }, focusOnCell model.active)
           37 -> (moveActive model (0, -1), Cmd.none)
           38 -> (moveActive model (-1, 0), Cmd.none)
           39 -> (moveActive model (0, 1), Cmd.none)
@@ -131,6 +137,7 @@ makeCell text (row, col) cols =
     Cell {row=row, col=col, text=text, val=val, expr=exprDefault}
 
 -- VIEW
+getText (Cell cell) = cell.text
 
 resizeModel sz model =
   let
@@ -186,7 +193,7 @@ drawCell model (Cell cellBody as cell) =
     if model.editing then
       td [width model.cellWidth, height model.cellHeight, style activeCellStyle]
       [
-        input [ placeholder cellBody.text, onInput (always Noop), size 5, width 5, readonly False,
+        input [ value model.currentEdit, onInput (always Noop), size 5, width 5, readonly False,
                 id (posToStr pos), onInput Edit, style textboxStyle ] []
       ]
     else
