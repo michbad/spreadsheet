@@ -10,7 +10,7 @@ type CellExpr =
   Num Float
   | RowNo
   | ColNo
-  | CellRef Int Int
+  | CellRef CellExpr CellExpr
   | Add CellExpr CellExpr
   | Sub CellExpr CellExpr
   | Mult CellExpr CellExpr
@@ -49,7 +49,7 @@ term =
 factor : Parser s CellExpr
 factor =
   spaced (
-    lazy (\_ ->parens expr) <|> num <|> cellref <|> lazy (\_ ->funapp) <|>
+    lazy (\_ ->parens expr) <|> num <|> lazy (\_ -> cellref) <|> lazy (\_ ->funapp) <|>
      empty <|> rowno <|> colno
     )
 
@@ -57,8 +57,8 @@ num = map Num (float <|> map toFloat int)
 
 cellref =
   CellRef
-    <$> (spacedstring "[" *> int <* spacedstring ",")
-    <*> (int <* spacedstring "]")
+    <$> (spacedstring "[" *> lazy (\_ -> expr) <* spacedstring ",")
+    <*> (lazy (\_ -> expr) <* spacedstring "]")
 
 cellrange =
   CellRange

@@ -11,6 +11,9 @@ type alias CellVal = Result String Float
 
 type alias AlmostVal = Lazy (Grid Cell -> CellVal)
 
+isInt : Float -> Bool
+isInt x = toFloat (round x) == x
+
 eval : CellExpr -> (Int, Int) -> AlmostVal
 eval expr pos =
   evalCheck pos expr pos
@@ -39,35 +42,36 @@ evalCheck checkPos expr (row, col) =
 
       FunApp fname es -> Debug.crash "TODO"
       --applyFun fname (es |> map eval) grid
-      CellRef r_ c_  ->
-        if r_ < 0 || c_ < 0 then
-          Err "invalid reference"
-        else if (r_, c_) == checkPos then
-          Err "circular reference"
-        else
-          let
-            refCell = getElem (r_, c_) grid
-          in case refCell of
-            -- Nothing returned means out of bounds access,
-            -- which means the cell must be empty
-            Nothing -> (force emptyVal) grid
-            Just (Cell cell) ->
-              force (evalCheck checkPos cell.expr (cell.row, cell.col)) grid
-          --
-          -- in
-          --   case cellVal of
-          --
-          --     Nothing -> (force emptyVal) grid
-          --     Just val -> val
-      -- CellRef r_ c_   -> getCellVal (r_, c_) grid
+
+      CellRef er ec  ->
+        let
+          vr = (force <| evalCheck checkPos er (row, col)) grid
+          vc = (force <| evalCheck checkPos ec (row, col)) grid
+        in
+          case (vr, vc) of
+            (Err msg, _) -> Err msg
+            (_, Err msg) -> Err msg
+            (Ok r, Ok c) ->
+              if r < 0 || c < 0 || not (isInt r) || not (isInt c) then
+                Err "invalid reference"
+              else if (round r, round c) == checkPos then
+                Err "circular reference"
+              else
+                let
+                  refCell = getElem (round r, round c) grid
+                in case refCell of
+                  -- Nothing returned means out of bounds access,
+                  -- which means the cell must be empty
+                  Nothing -> (force emptyVal) grid
+                  Just (Cell cell) ->
+                    -- This unfortunately recomputes the child values
+                    force (evalCheck checkPos cell.expr (cell.row, cell.col)) grid
 
 
 -- applyFun : String -> List CellVal -> Grid Cell -> CellVal
 -- applyFun fname vals grid =
 --   Debug.crash "TODO"
---
--- getCellVal (r, c) grid =
---   Ok 0
+
 
 valToString : AlmostVal -> Grid Cell -> String
 valToString val grid = case (force val) grid of
