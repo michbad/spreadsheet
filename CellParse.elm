@@ -38,19 +38,13 @@ mulop = choice [ Mult <$ string "*"
 
 expr : Parser s CellExpr
 expr =
-  let
-    go () =
+  lazy <| \_ ->
       chainl addop term
-  in
-    lazy go
 
 term : Parser s CellExpr
 term =
-  let
-    go () =
-      chainl mulop factor
-  in
-    lazy go
+  lazy <| \_ ->
+    chainl mulop factor
 
 factor : Parser s CellExpr
 factor =
