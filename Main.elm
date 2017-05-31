@@ -141,10 +141,12 @@ resizeModel sz model =
   in
    { model | showWidth = newShowWidth, showHeight = newShowHeight}
 
+tableStyle = [("border-collapse", "collapse")]
+
 activeCellStyle : List (String, String)
 activeCellStyle = [
   ("background-color", "white"),
-  ("border", "2px solid black"),
+  ("border", "2px solid green"),
   ("padding", "0px"),
   ("text-align", "center")
   ]
@@ -153,7 +155,8 @@ inactiveCellStyle = [
   ("background-color", "white"),
   ("text-align", "center"),
   ("padding", "0px"),
-  ("border", "1px solid gray")
+  ("border", "1px solid gray"),
+  ("border-collapse", "collapse")
     ]
 
 textboxStyle = [
@@ -221,7 +224,7 @@ drawGrid model cols =
       )
     rowEntries = List.indexedMap (\i row -> drawRow model (i + rowOffset) row) rows
   in
-    table [] <| header :: rowEntries
+    table [style tableStyle] <| header :: rowEntries
 
 view : Model -> Html Msg
 view model =
