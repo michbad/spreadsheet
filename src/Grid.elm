@@ -64,7 +64,6 @@ ensureColLen colIdx targetLen fillFunc col =
   else let
     rowOffset = A.length col
     toAppend = A.initialize (targetLen - A.length col) (\r -> fillFunc (r + rowOffset))
-    -- (\r -> emptyCell (r+rowOffset) colIdx)
   in
     let _ = Debug.log "after append" (A.length <| A.append col toAppend) in
     A.append col toAppend

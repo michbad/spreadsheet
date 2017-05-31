@@ -24,8 +24,6 @@ main =
 
 -- MODEL
 
--- type alias Cell = {val : String, col : Int, row : Int}
-
 init = (initModel, getSize)
 
 type alias Model = {
