@@ -144,15 +144,16 @@ resizeModel sz model =
 activeCellStyle : List (String, String)
 activeCellStyle = [
   ("background-color", "white"),
-  ("border", "1px solid black"),
-  ("text-align", "center"),
-  ("padding", "0px")
+  ("border", "2px solid black"),
+  ("padding", "0px"),
+  ("text-align", "center")
   ]
 
 inactiveCellStyle = [
   ("background-color", "white"),
   ("text-align", "center"),
-  ("padding", "0px")
+  ("padding", "0px"),
+  ("border", "1px solid gray")
     ]
 
 textboxStyle = [
@@ -162,6 +163,8 @@ textboxStyle = [
   ("font-size", "15px"),
   ("font-family", "sans-serif")
   ]
+
+
 
 viewCell : Cell -> Grid Cell -> String
 viewCell (Cell cell) grid =
