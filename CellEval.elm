@@ -7,11 +7,17 @@ import Lazy exposing (lazy, force, Lazy)
 import Result exposing (..)
 import Result.Extra exposing (combine)
 
-type Cell = Cell {val : AlmostVal, text : String, expr : CellExpr, col : Int, row : Int}
+type Cell =
+  Cell {
+    val : AlmostVal,
+    text : String,
+    expr : CellExpr,
+    col : Int,
+    row : Int
+  }
+
 type alias CellVal = Result String Float
-
 type alias AlmostVal = Lazy (Grid Cell -> CellVal)
-
 
 valToString : AlmostVal -> Grid Cell -> String
 valToString val grid = case (force val) grid of
@@ -84,7 +90,8 @@ evalCheck checkPos expr (row, col) =
           Err msg -> Err msg
           Ok exps ->
             let
-              vals = List.map (\e -> (force <| evalCheck checkPos e (row, col)) grid) exps
+              vals = exps |>
+                List.map (\e -> (force <| evalCheck checkPos e (row, col)) grid)
             in
               applyFun fname vals
 

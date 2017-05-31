@@ -49,31 +49,47 @@ term =
 factor : Parser s CellExpr
 factor =
   spaced (
-    lazy (\_ ->parens expr) <|> num <|> lazy (\_ -> cellref) <|> lazy (\_ ->funapp) <|>
-     empty <|> rowno <|> colno
-    )
+    lazy (\_ ->parens expr)
+    <|> num
+    <|> lazy (\_ -> cellref)
+    <|> lazy (\_ ->funapp)
+    <|> empty
+    <|> rowno
+    <|> colno
+  )
 
-num = map Num (float <|> map toFloat int)
+num = map Num (
+        float <|> map toFloat int
+        )
 
 cellref =
   CellRef
-    <$> (spacedstring "[" *> lazy (\_ -> expr) <* spacedstring ",")
-    <*> (lazy (\_ -> expr) <* spacedstring "]")
+    <$> ( spacedstring "[" *> lazy (\_ -> expr) <* spacedstring "," )
+    <*> ( lazy (\_ -> expr) <* spacedstring "]" )
 
 cellrange =
   CellRange
-    <$> ( (,) <$> (spacedstring "[" *> int <* spacedstring ":") <*> int )
-    <*> ( (,) <$> (spacedstring "," *> int <* spacedstring ":") <*> int <* spacedstring "]" )
+    <$> (
+        (,) <$> (spacedstring "[" *> int <* spacedstring ":")
+            <*> int
+      )
+    <*> (
+        (,) <$> (spacedstring "," *> int <* spacedstring ":")
+            <*> int <* spacedstring "]"
+      )
 
 rowno = string "#r" *> succeed RowNo
 
 colno = string "#c" *> succeed ColNo
 
-exprlistitem = cellrange <|> (Single <$> lazy (\_ -> expr))
+exprlistitem = cellrange
+               <|> (Single <$> lazy (\_ -> expr))
 
 exprlist = sepBy (spacedstring ",") (lazy (\_ -> exprlistitem))
 
-funapp = FunApp <$> regex "[a-zA-Z]+" <*> parens (lazy (\_ -> exprlist))
+funapp = FunApp
+        <$> regex "[a-zA-Z]+"
+        <*> parens (lazy (\_ -> exprlist))
 
 empty = end *> succeed emptyExpr
 
