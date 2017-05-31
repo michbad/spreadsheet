@@ -5,6 +5,7 @@ import Grid exposing (getElem, Grid)
 import Lazy exposing (lazy, force, Lazy)
 
 import Result exposing (..)
+import Result.Extra exposing (combine)
 
 type Cell = Cell {val : AlmostVal, text : String, expr : CellExpr, col : Int, row : Int}
 type alias CellVal = Result String Float
@@ -30,20 +31,20 @@ evalCheck checkPos expr (row, col) =
       Add e1 e2       -> map2 (+)
         ((force <| evalCheck checkPos e1 (row, col)) grid)
         ((force <| evalCheck checkPos e2 (row, col)) grid)
+
       Sub e1 e2       -> map2 (-)
         ((force <| evalCheck checkPos e1 (row, col)) grid)
         ((force <| evalCheck checkPos e2 (row, col)) grid)
+
       Mult e1 e2      -> map2 (*)
         ((force <| evalCheck checkPos e1 (row, col)) grid)
         ((force <| evalCheck checkPos e2 (row, col)) grid)
+
       Div e1 e2       -> map2 (/)
         ((force <| evalCheck checkPos e1 (row, col)) grid)
         ((force <| evalCheck checkPos e2 (row, col)) grid)
 
-      FunApp fname es -> Debug.crash "TODO"
-      --applyFun fname (es |> map eval) grid
-
-      CellRef er ec  ->
+      CellRef er ec ->
         let
           vr = (force <| evalCheck checkPos er (row, col)) grid
           vc = (force <| evalCheck checkPos ec (row, col)) grid
@@ -67,10 +68,61 @@ evalCheck checkPos expr (row, col) =
                     -- This unfortunately recomputes the child values
                     force (evalCheck checkPos cell.expr (cell.row, cell.col)) grid
 
+      FunApp fname eitems ->
+        case rangeItemsToExps eitems of
+          Err msg -> Err msg
+          Ok exps ->
+            let
+              vals = List.map (\e -> (force <| evalCheck checkPos e (row, col)) grid) exps
+            in
+              applyFun fname vals
 
--- applyFun : String -> List CellVal -> Grid Cell -> CellVal
--- applyFun fname vals grid =
---   Debug.crash "TODO"
+rangeItemsToExps : ExprList -> Result String (List CellExpr)
+rangeItemsToExps items =
+  let
+    fun item = case item of
+      Single e -> Ok [e]
+      CellRange rowRange colRange ->
+        refsFromRange rowRange colRange
+  in
+    Result.map List.concat <| combine <| List.map fun items
+
+posToRef : (Int, Int) -> Result String CellExpr
+posToRef (r, c) =
+  if r < 0 || c < 0 then
+    Err "invalid reference"
+  else
+    Ok <| CellRef (Num (toFloat r)) (Num (toFloat c))
+
+refsFromRange : (Int, Int) -> (Int, Int) -> Result String (List CellExpr)
+refsFromRange (startr, endr) (startc, endc) =
+  if startr > endr || startc > endc then
+    Err "bad range"
+  else
+    combine <|
+      List.concatMap
+      (\r -> List.map (\c -> posToRef (r,c)) (List.range startc endc))
+      (List.range startr endr)
+
+
+applyFun : String -> List CellVal -> CellVal
+applyFun fname vals =
+  let
+    fun_ = getFun fname
+    nums_ = combine vals
+  in case (fun_, nums_) of
+    (Err msg, _)      -> Err msg
+    (_, Err msg)      -> Err msg
+    (Ok fun, Ok nums) -> Ok (fun nums)
+
+getFun : String -> Result String (List Float -> Float)
+getFun str =
+  case str of
+    "sum" -> Ok List.sum
+    "min" -> Ok (\lst -> List.minimum lst |> Maybe.withDefault 0)
+    "max" -> Ok (\lst -> List.maximum lst |> Maybe.withDefault 0)
+    _     -> Err "invalid function name"
+
 
 
 valToString : AlmostVal -> Grid Cell -> String

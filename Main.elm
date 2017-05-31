@@ -114,25 +114,6 @@ moveActive model (dx, dy) =
       newCols = extendGrid (newOffX + model.showHeight + 1, newOffY + model.showWidth + 1) (\pos -> emptyCell pos) model.cols
   in  { model | active = (newX, newY), offset = (newOffX, newOffY), cols = newCols }
 
--- VIEW
-
-activeCellStyle : List (String, String)
-activeCellStyle = [
-  ("background-color", "light gray"),
-  -- ("font-size", "15px"),
-  ("border", "1px solid black"),
-  ("text-align", "center"),
-  ("padding", "0px")
-  ]
-
-inactiveCellStyle = [
-  ("background-color", "light gray"),
-  ("text-align", "center"),
-  ("padding", "0px")
-    ]
-
-
-
 emptyCell (row, col) =
   Cell {row=row, col=col, val=emptyVal, text="", expr=emptyExpr}
 
@@ -143,6 +124,24 @@ makeCell text (row, col) cols =
     val = evalParsed expr (row, col)
   in
     Cell {row=row, col=col, text=text, val=val, expr=exprDefault}
+
+-- VIEW
+
+activeCellStyle : List (String, String)
+activeCellStyle = [
+  ("background-color", "white"),
+  -- ("font-size", "15px"),
+  ("border", "1px solid black"),
+  ("text-align", "center"),
+  ("padding", "0px")
+  ]
+
+inactiveCellStyle = [
+  ("background-color", "white"),
+  ("text-align", "center"),
+  ("padding", "0px")
+    ]
+
 
 viewCell : Cell -> Grid Cell -> String
 viewCell (Cell cell) grid =
@@ -193,12 +192,6 @@ drawGrid model cols =
     rowEntries = List.indexedMap (\i row -> drawRow model (i + rowOffset) row) rows
   in
     table [] <| header :: rowEntries
-
-
-
-
-
-
 
 
 view : Model -> Html Msg
