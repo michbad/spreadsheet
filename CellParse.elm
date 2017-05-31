@@ -1,4 +1,4 @@
-module CellParse exposing ( .. )
+module CellParse exposing (parseExpr, emptyExpr, CellExpr(..), ExprList, ExprListItem(..))
 
 -- Note: Part of the code responsible for arithmetic expressions
 -- is taken from an elm-combine library example.

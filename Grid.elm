@@ -1,4 +1,4 @@
-module Grid exposing (..)
+module Grid exposing (makeGrid, transpose, updateElem, getElem, gridToList, getGridSlice, extendGrid, Grid)
 -- import Array as A
 import Array.Hamt as A
 

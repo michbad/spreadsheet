@@ -1,4 +1,4 @@
-module CellEval exposing (..)
+module CellEval exposing (valToString, evalParsed, emptyVal, Cell(..))
 
 import CellParse exposing (CellExpr(..), ExprListItem(..), ExprList)
 import Grid exposing (getElem, Grid)
@@ -12,8 +12,19 @@ type alias CellVal = Result String Float
 
 type alias AlmostVal = Lazy (Grid Cell -> CellVal)
 
-isInt : Float -> Bool
-isInt x = toFloat (round x) == x
+
+valToString : AlmostVal -> Grid Cell -> String
+valToString val grid = case (force val) grid of
+  Err txt -> "Error: " ++ txt
+  Ok num -> toString num
+
+evalParsed : Result String CellExpr -> (Int, Int) -> AlmostVal
+evalParsed parsed pos =
+  case parsed of
+    Err msg -> lazy <| \_ -> always (Err msg)
+    Ok tree -> eval tree pos
+
+emptyVal = lazy <| \_ -> always (Ok 0)
 
 eval : CellExpr -> (Int, Int) -> AlmostVal
 eval expr pos =
@@ -124,16 +135,6 @@ getFun str =
     _     -> Err "invalid function name"
 
 
+isInt : Float -> Bool
+isInt x = toFloat (round x) == x
 
-valToString : AlmostVal -> Grid Cell -> String
-valToString val grid = case (force val) grid of
-  Err txt -> "Error: " ++ txt
-  Ok num -> toString num
-
-evalParsed : Result String CellExpr -> (Int, Int) -> AlmostVal
-evalParsed parsed pos =
-  case parsed of
-    Err msg -> lazy <| \_ -> always (Err msg)
-    Ok tree -> eval tree pos
-
-emptyVal = lazy <| \_ -> always (Ok 0)

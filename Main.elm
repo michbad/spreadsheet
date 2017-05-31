@@ -10,7 +10,7 @@ import Dom
 import Grid exposing (..)
 -- import Cell exposing (..)
 import CellEval exposing (..)
-import CellParse exposing (..)
+import CellParse exposing (parseExpr, emptyExpr)
 
 main : Program Never Model Msg
 main =
